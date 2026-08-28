@@ -26,3 +26,37 @@ body {
 ::selection {
   background: color-mix(in oklab, var(--color-accent) 35%, transparent);
 }
+
+/* Shiki output. The theme paints its own background; the panel supplies ours. */
+.code pre.shiki {
+  background: transparent !important;
+  counter-reset: line;
+  overflow-x: auto;
+  padding: 0.75rem 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  line-height: 1.3rem;
+  tab-size: 4;
+}
+
+.code pre.shiki code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* Shiki separates lines with a real newline inside the <pre>, so .line must
+   stay inline — making it a block renders every line twice as tall. */
+.code .line {
+  counter-increment: line;
+}
+
+.code .line::before {
+  content: counter(line);
+  display: inline-block;
+  width: 3.5rem;
+  padding-right: 1.25rem;
+  text-align: right;
+  color: color-mix(in oklab, var(--color-muted) 40%, transparent);
+  user-select: none;
+}

@@ -61,6 +61,21 @@ export async function loadScenario(id: string): Promise<Scenario> {
   return JSON.parse(await fs.readFile(file, "utf8")) as Scenario;
 }
 
+/** Every file path in a fixture, sorted. */
+export async function listFixturePaths(fixture: string): Promise<string[]> {
+  const root = safeJoin(FIXTURES_DIR, fixture);
+  return (await walk(root, root)).sort();
+}
+
+/** One file from a fixture. The relative path arrives from the client. */
+export async function readFixtureFile(
+  fixture: string,
+  relative: string,
+): Promise<string> {
+  const root = safeJoin(FIXTURES_DIR, fixture);
+  return fs.readFile(safeJoin(root, relative), "utf8");
+}
+
 /** Every file in a fixture, sorted, with contents. Fixtures are small by design. */
 export async function readFixture(fixture: string): Promise<FixtureFile[]> {
   const root = safeJoin(FIXTURES_DIR, fixture);

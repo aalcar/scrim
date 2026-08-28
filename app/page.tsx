@@ -1,5 +1,5 @@
 import Session from "./session";
-import { loadScenario, readFixture } from "@/lib/scrim";
+import { listFixturePaths, loadScenario } from "@/lib/scrim";
 
 const DEFAULT_SCENARIO = "pulse-monitors";
 
@@ -9,7 +9,10 @@ export default async function Page({ searchParams }: PageProps<"/">) {
   const scenario = await loadScenario(
     typeof requested === "string" ? requested : DEFAULT_SCENARIO,
   );
-  const files = await readFixture(scenario.fixture);
 
-  return <Session scenario={scenario} files={files} />;
+  // Only paths are sent up front; contents are fetched and highlighted on
+  // demand so the grammar bundle never reaches the browser.
+  const paths = await listFixturePaths(scenario.fixture);
+
+  return <Session scenario={scenario} paths={paths} />;
 }

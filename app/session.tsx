@@ -1,9 +1,10 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import type { UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FixtureFile, Scenario } from "@/lib/scrim";
+import type { Scenario } from "@/lib/scrim";
+import FileTree, { BRIEF } from "./file-tree";
 
 type Grade = {
   headline: string;
@@ -15,34 +16,27 @@ type Grade = {
   possible: number;
 };
 
-const BRIEF = "__brief__";
-
 export default function Session({
   scenario,
-  files,
+  paths,
 }: {
   scenario: Scenario;
-  files: FixtureFile[];
+  paths: string[];
 }) {
   const [selected, setSelected] = useState<string>(BRIEF);
   const [input, setInput] = useState("");
+  const [startedAt] = useState(() => Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [grade, setGrade] = useState<Grade | null>(null);
   const [grading, setGrading] = useState(false);
 
-  // The transport is built once, so the current clock reading is read from a ref
-  // rather than captured in a closure.
-  const elapsedRef = useRef(0);
-  elapsedRef.current = elapsed;
-
   useEffect(() => {
-    const startedAt = Date.now();
     const timer = setInterval(
       () => setElapsed(Math.floor((Date.now() - startedAt) / 60000)),
       5000,
     );
     return () => clearInterval(timer);
-  }, []);
+  }, [startedAt]);
 
   const opening: UIMessage = useMemo(
     () => ({
@@ -53,20 +47,7 @@ export default function Session({
     [scenario.interviewer.opening],
   );
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/chat",
-        body: () => ({
-          scenarioId: scenario.id,
-          minutesElapsed: elapsedRef.current,
-        }),
-      }),
-    [scenario.id],
-  );
-
   const { messages, sendMessage, status, error } = useChat({
-    transport,
     messages: [opening],
   });
 
@@ -118,15 +99,12 @@ export default function Session({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <FileList files={files} selected={selected} onSelect={setSelected} />
+        <FileTree paths={paths} selected={selected} onSelect={setSelected} />
         <main className="min-w-0 flex-1 overflow-auto bg-ink">
           {selected === BRIEF ? (
             <Brief scenario={scenario} />
           ) : (
-            <CodeView
-              path={selected}
-              content={files.find((f) => f.path === selected)?.content ?? ""}
-            />
+            <CodeView scenarioId={scenario.id} path={selected} />
           )}
         </main>
         <Chat
@@ -139,7 +117,15 @@ export default function Session({
           onSend={() => {
             const text = input.trim();
             if (!text || busy) return;
-            sendMessage({ text });
+            sendMessage(
+              { text },
+              {
+                body: {
+                  scenarioId: scenario.id,
+                  minutesElapsed: Math.floor((Date.now() - startedAt) / 60000),
+                },
+              },
+            );
             setInput("");
           }}
         />
@@ -149,64 +135,6 @@ export default function Session({
         <GradeReport grade={grade} scenario={scenario} onClose={() => setGrade(null)} />
       )}
     </div>
-  );
-}
-
-function FileList({
-  files,
-  selected,
-  onSelect,
-}: {
-  files: FixtureFile[];
-  selected: string;
-  onSelect: (path: string) => void;
-}) {
-  const groups = useMemo(() => {
-    const byDir = new Map<string, string[]>();
-    for (const file of files) {
-      const slash = file.path.lastIndexOf("/");
-      const dir = slash === -1 ? "." : file.path.slice(0, slash);
-      const name = slash === -1 ? file.path : file.path.slice(slash + 1);
-      byDir.set(dir, [...(byDir.get(dir) ?? []), name]);
-    }
-    return [...byDir.entries()];
-  }, [files]);
-
-  return (
-    <nav className="w-72 shrink-0 overflow-auto border-r border-line bg-panel py-2 font-mono text-xs">
-      <button
-        onClick={() => onSelect(BRIEF)}
-        className={`block w-full px-3 py-1.5 text-left ${
-          selected === BRIEF ? "bg-raised text-accent" : "text-muted hover:text-text"
-        }`}
-      >
-        ticket & brief
-      </button>
-      <div className="my-2 border-t border-line" />
-      {groups.map(([dir, names]) => (
-        <div key={dir} className="mb-2">
-          <div className="truncate px-3 py-1 text-[10px] uppercase tracking-wide text-muted/60">
-            {dir}
-          </div>
-          {names.map((name) => {
-            const full = dir === "." ? name : `${dir}/${name}`;
-            return (
-              <button
-                key={full}
-                onClick={() => onSelect(full)}
-                className={`block w-full truncate px-3 py-1 pl-5 text-left ${
-                  selected === full
-                    ? "bg-raised text-accent"
-                    : "text-text/70 hover:text-text"
-                }`}
-              >
-                {name}
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </nav>
   );
 }
 
@@ -230,23 +158,50 @@ function Brief({ scenario }: { scenario: Scenario }) {
   );
 }
 
-function CodeView({ path, content }: { path: string; content: string }) {
-  const lines = content.split("\n");
+function CodeView({
+  scenarioId,
+  path,
+}: {
+  scenarioId: string;
+  path: string;
+}) {
+  const cache = useRef(new Map<string, string>());
+  const [html, setHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cached = cache.current.get(path);
+    if (cached) {
+      setHtml(cached);
+      return;
+    }
+
+    let stale = false;
+    setHtml(null);
+    fetch(`/api/file?scenario=${encodeURIComponent(scenarioId)}&path=${encodeURIComponent(path)}`)
+      .then((response) => (response.ok ? response.json() : Promise.reject(response.statusText)))
+      .then(({ html }: { html: string }) => {
+        cache.current.set(path, html);
+        if (!stale) setHtml(html);
+      })
+      .catch(() => {
+        if (!stale) setHtml("<pre>Could not load this file.</pre>");
+      });
+
+    return () => {
+      stale = true;
+    };
+  }, [scenarioId, path]);
+
   return (
     <div>
-      <div className="sticky top-0 border-b border-line bg-panel px-4 py-2 font-mono text-xs text-muted">
+      <div className="sticky top-0 z-10 border-b border-line bg-panel px-4 py-2 font-mono text-xs text-muted">
         {path}
       </div>
-      <pre className="px-2 py-3 font-mono text-xs leading-5">
-        {lines.map((line, index) => (
-          <div key={index} className="flex hover:bg-panel/60">
-            <span className="w-12 shrink-0 select-none pr-3 text-right text-muted/40">
-              {index + 1}
-            </span>
-            <code className="whitespace-pre-wrap break-words">{line || " "}</code>
-          </div>
-        ))}
-      </pre>
+      {html === null ? (
+        <div className="px-4 py-3 font-mono text-xs text-muted/50">loading…</div>
+      ) : (
+        <div className="code" dangerouslySetInnerHTML={{ __html: html }} />
+      )}
     </div>
   );
 }
