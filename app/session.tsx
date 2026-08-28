@@ -25,18 +25,23 @@ export default function Session({
 }) {
   const [selected, setSelected] = useState<string>(BRIEF);
   const [input, setInput] = useState("");
-  const [startedAt] = useState(() => Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [grade, setGrade] = useState<Grade | null>(null);
   const [grading, setGrading] = useState(false);
 
+  // Stamped on mount rather than during render: calling Date.now() while
+  // rendering gives the server and the client two different answers, which is
+  // exactly the kind of divergence that breaks hydration.
+  const startedAt = useRef(0);
+
   useEffect(() => {
+    startedAt.current = Date.now();
     const timer = setInterval(
-      () => setElapsed(Math.floor((Date.now() - startedAt) / 60000)),
+      () => setElapsed(Math.floor((Date.now() - startedAt.current) / 60000)),
       5000,
     );
     return () => clearInterval(timer);
-  }, [startedAt]);
+  }, []);
 
   const opening: UIMessage = useMemo(
     () => ({
@@ -122,7 +127,9 @@ export default function Session({
               {
                 body: {
                   scenarioId: scenario.id,
-                  minutesElapsed: Math.floor((Date.now() - startedAt) / 60000),
+                  minutesElapsed: Math.floor(
+                    (Date.now() - startedAt.current) / 60000,
+                  ),
                 },
               },
             );
