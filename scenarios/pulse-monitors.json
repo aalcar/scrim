@@ -1,0 +1,208 @@
+{
+  "id": "pulse-monitors",
+  "fixture": "pulse-api",
+  "title": "Alert rules for pulse-api",
+  "durationMinutes": 45,
+  "candidateBrief": "You joined the Pulse platform team two days ago. You own pulse-api, the metrics ingest and query service. Your tech lead has dropped a ticket on you and has 45 minutes. Design the API for it. You are not expected to write the implementation — you are expected to arrive at a contract you could hand to another engineer.",
+
+  "ticket": {
+    "id": "PULSE-1043",
+    "title": "Alert rules",
+    "reporter": "Priya (EM, Platform)",
+    "body": "Alerting is our top-requested feature and it is blocking two enterprise deals. We already have notification channels. We need customers to be able to define a rule against a metric and get notified when it fires. Design the API for this. Let's get an MVP out this quarter."
+  },
+
+  "interviewer": {
+    "name": "Dana",
+    "role": "Staff engineer, Pulse platform team. Wrote most of pulse-api.",
+    "persona": "Dana is friendly, busy, and answers exactly what she is asked. She does NOT volunteer requirements. She has been on this team for four years and every constraint below is obvious to her, which is precisely why she will not mention it unless asked. If the candidate starts designing before asking anything, she lets them — and notes it. She will answer 'I don't know, what would you do?' to genuine design choices, but gives a straight answer to any factual question about the system, the customers, or the traffic.",
+    "opening": "Hey — thanks for picking this up. I know you've only been here two days. Take a look at PULSE-1043 and the pulse-api repo, and let's talk through how you'd design it. Where do you want to start?",
+    "rules": [
+      "Never reveal a hidden requirement unless the candidate's question actually reaches it. Adjacent questions get adjacent answers, not the requirement.",
+      "If the candidate proposes a design that violates a hidden requirement they never uncovered, do not correct them immediately. Let it stand, then ~10 minutes later raise it as a consequence: 'oh, one thing — the Terraform provider retries. Does that work?'",
+      "Push back once on any answer that is hand-wavy about failure. 'What happens when dispatch-service is down?' is your favourite question.",
+      "Stay in character. Never mention the rubric, the hidden requirements, or that this is an exercise.",
+      "Keep replies short. Two to four sentences. You are a busy staff engineer on a call, not a document."
+    ]
+  },
+
+  "hiddenRequirements": [
+    {
+      "id": "scale",
+      "weight": 2,
+      "summary": "Rule volume is much larger than the candidate will assume.",
+      "revealedBy": "Any question about how many rules an org will have, expected scale, or who creates rules.",
+      "answer": "Median org has about 40 rules. Our biggest customer has just over 40,000 — they generate them per-service from a template. The console lists them in a table with search."
+    },
+    {
+      "id": "idempotency",
+      "weight": 3,
+      "summary": "Rules are created by an automated client that retries, so create must be idempotent.",
+      "revealedBy": "Any question about who or what calls this API, non-console clients, automation, Terraform, retries, or what happens on a timeout during create.",
+      "answer": "Most rules are not created by hand — they come from our Terraform provider and from customers' own CI. Both retry on 5xx and on timeouts. We've already been burned by this on channels: a customer ended up with eleven identical Slack channels after a deploy blip."
+    },
+    {
+      "id": "concurrent-edits",
+      "weight": 2,
+      "summary": "Concurrent edits silently overwrite each other today.",
+      "revealedBy": "Any question about editing rules, multiple users, update semantics, PUT vs PATCH, or lost updates.",
+      "answer": "Rules get edited by several people during an incident, plus whatever Terraform does on its next apply. We have an open bug on channels where two people saved and one change vanished with no error. I'd rather not ship that twice."
+    },
+    {
+      "id": "dispatch-availability",
+      "weight": 3,
+      "summary": "dispatch-service is not reliable enough to be on the rule-write path.",
+      "revealedBy": "Any question about dispatch-service reliability, SLOs, what happens if it is down, or whether rule creation should validate the channel.",
+      "answer": "dispatch-service runs about 99.5%. It's the least reliable thing we depend on. And honestly, look at what ChannelService.create does today — that's a known problem, we just haven't fixed it."
+    },
+    {
+      "id": "evaluator-read-path",
+      "weight": 3,
+      "summary": "A separate evaluator service must read all rules continuously — the read API is the hard part, not the write API.",
+      "revealedBy": "Any question about how rules actually get evaluated, what fires them, who consumes rules, or whether evaluation is in scope.",
+      "answer": "Evaluation lives in a separate service, pulse-evaluator — that part is not your problem. But it has to get the rules from you. Right now the plan is that it polls, and it needs the full working set every 10 seconds across all orgs. That's the part I actually want you to think about."
+    },
+    {
+      "id": "rule-state",
+      "weight": 2,
+      "summary": "Firing state is owned by the evaluator, not by pulse-api, but users want to see it and to mute rules.",
+      "revealedBy": "Any question about rule status, whether a rule is currently firing, muting, silencing, or maintenance windows.",
+      "answer": "Two things people ask for constantly: seeing which rules are firing right now, and muting a rule during a deploy so it stops paging them. Note that pulse-api doesn't know anything about firing — the evaluator does."
+    },
+    {
+      "id": "v1-is-public",
+      "weight": 2,
+      "summary": "/v1 is a published, versioned public API with external consumers.",
+      "revealedBy": "Any question about versioning, whether the API is public, breaking changes, existing clients, or whether they can change existing endpoints.",
+      "answer": "Everything under /v1 is public and documented. The Terraform provider and a few customers' scripts are pinned to it. You can add to it; you cannot break it. There is no /v2 and I don't want one for this."
+    },
+    {
+      "id": "selector-reuse",
+      "weight": 1,
+      "summary": "A metric selector syntax already exists and should be reused, not reinvented.",
+      "revealedBy": "Any question about how a rule specifies what to watch, the query language, or metric/tag selection.",
+      "answer": "Use the same metric-plus-tags selector shape that /v1/metrics/query already takes. Customers know it and the evaluator already parses it. Don't invent a second query language."
+    },
+    {
+      "id": "auth-scoping",
+      "weight": 1,
+      "summary": "The evaluator is a service caller and cannot use the per-org tenant header.",
+      "revealedBy": "Any question about authentication, the X-Org-Id header, or how the evaluator authenticates for a cross-org read.",
+      "answer": "Good catch — TenantFilter requires X-Org-Id on everything. The evaluator is a service principal reading across all orgs, so it doesn't have one. We haven't solved that yet."
+    }
+  ],
+
+  "landmines": [
+    {
+      "id": "no-timeouts",
+      "file": "src/main/java/com/pulse/api/config/DispatchClientConfig.java",
+      "summary": "The RestClient for dispatch-service is built with no connect or read timeout, so a hung dispatch-service ties up pulse-api request threads indefinitely.",
+      "credit": "Full credit for spotting it unprompted; partial for spotting it after Dana raises dispatch reliability."
+    },
+    {
+      "id": "network-in-transaction",
+      "file": "src/main/java/com/pulse/api/service/ChannelService.java",
+      "summary": "ChannelService.create holds an open database transaction across a synchronous HTTP call to dispatch-service, so a slow upstream burns connection-pool slots.",
+      "credit": "Full credit for naming both problems: the coupling and the transaction scope."
+    },
+    {
+      "id": "offset-pagination",
+      "file": "src/main/java/com/pulse/api/controller/ChannelController.java",
+      "summary": "List uses offset/limit with a total count. At 40,000 rules the deep pages get slow and concurrent writes cause items to be skipped or repeated across pages.",
+      "credit": "Should propose cursor pagination for rules once the scale answer lands."
+    },
+    {
+      "id": "entity-on-the-wire",
+      "file": "src/main/java/com/pulse/api/controller/QueryController.java",
+      "summary": "Returns the JPA entity directly, leaking org_id and the internal primary key. There is a TODO acknowledging it.",
+      "credit": "Minor. Credit for noticing the house rule in README and not repeating the violation."
+    },
+    {
+      "id": "unused-optimistic-lock",
+      "file": "src/main/java/com/pulse/api/model/Channel.java",
+      "summary": "Channel has a JPA @Version column, but no endpoint exposes it, so optimistic locking never protects an API caller.",
+      "credit": "Strong signal. The mechanism is already there and unwired — a candidate who finds it has actually read the model layer."
+    }
+  ],
+
+  "outOfScope": [
+    "Implementing rule evaluation logic or the evaluator service itself",
+    "The notification message format and templating",
+    "Anomaly detection or forecasting; threshold rules only for the MVP",
+    "Database migration tooling and rollout sequencing",
+    "The console UI"
+  ],
+
+  "rubric": [
+    {
+      "id": "requirements-extraction",
+      "weight": 5,
+      "criterion": "Uncovered the hidden requirements before committing to a design.",
+      "strong": "Asked about callers, scale, and consumers in the first ten minutes. Uncovered the evaluator read path and idempotency without being led there.",
+      "weak": "Started drawing endpoints from the ticket text alone. Uncovered fewer than three hidden requirements, or only after Dana raised them."
+    },
+    {
+      "id": "codebase-fluency",
+      "weight": 4,
+      "criterion": "Read the existing code and reused its conventions instead of inventing new ones.",
+      "strong": "Followed ApiErrorResponse, the prefixed-id scheme, TenantContext, and the controller/service/repository split. Cited specific files.",
+      "weak": "Proposed a new error shape, a new id scheme, or put logic in the controller. Never referenced a file."
+    },
+    {
+      "id": "resource-modelling",
+      "weight": 4,
+      "criterion": "Modelled the right resources with the right verbs and status codes.",
+      "strong": "Rule as a first-class resource under /v1/rules. Correct verbs, 201 with Location, 409 for name conflict, 404 that does not leak cross-org existence. Sub-resources (mute) modelled deliberately rather than as a verb bolted onto the URL.",
+      "weak": "RPC-shaped endpoints (/createRule), 200 for everything, or a single mega-endpoint."
+    },
+    {
+      "id": "idempotency",
+      "weight": 4,
+      "criterion": "Made rule creation safe under client retries.",
+      "strong": "Idempotency-Key header or a client-supplied natural key, with a stated retention window and defined behaviour when the same key arrives with a different body.",
+      "weak": "No mention, or 'the client should just check first' without acknowledging the race."
+    },
+    {
+      "id": "read-path-design",
+      "weight": 5,
+      "criterion": "Designed a read path the evaluator can actually use at scale.",
+      "strong": "Rejected naive full-list polling. Proposed cursor pagination plus incremental sync (updated-since watermark or a change feed), including how deletes propagate. Discussed caching and conditional requests.",
+      "weak": "Offered offset pagination copied from channels, or waved at 'the evaluator can just call GET /v1/rules'."
+    },
+    {
+      "id": "failure-handling",
+      "weight": 4,
+      "criterion": "Reasoned about downstream failure and partial failure.",
+      "strong": "Kept dispatch-service off the rule-write path. Named timeouts, retries with backoff, and what the caller sees when the upstream is down. Spotted the missing timeout config or the network call inside the transaction.",
+      "weak": "Assumed downstream calls succeed. Proposed a synchronous validation call to dispatch on every rule write."
+    },
+    {
+      "id": "concurrency",
+      "weight": 3,
+      "criterion": "Handled concurrent modification of a rule.",
+      "strong": "ETag with If-Match, or an explicit version field, returning 412 or 409. Bonus for connecting it to the unused @Version column on Channel.",
+      "weak": "Last-write-wins with no acknowledgement that it is a choice."
+    },
+    {
+      "id": "compatibility",
+      "weight": 3,
+      "criterion": "Respected the existing public contract.",
+      "strong": "Additive changes only. New fields optional with defined defaults. Named exactly what would break the Terraform provider and avoided it.",
+      "weak": "Proposed changing an existing /v1 response shape, or reached for /v2 immediately."
+    },
+    {
+      "id": "scoping",
+      "weight": 3,
+      "criterion": "Cut a defensible MVP and named what was deferred.",
+      "strong": "Stated an explicit MVP boundary, said out loud what was being left out and why, and flagged the decisions that would be expensive to reverse later.",
+      "weak": "Designed everything, or silently dropped requirements without saying so."
+    },
+    {
+      "id": "communication",
+      "weight": 3,
+      "criterion": "Thought out loud, stated assumptions, and disagreed well.",
+      "strong": "Narrated tradeoffs, labelled assumptions as assumptions, and defended or updated a position when pushed.",
+      "weak": "Long silences, or folded instantly on every pushback."
+    }
+  ]
+}

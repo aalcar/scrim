@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: pulse-api
+  datasource:
+    url: jdbc:h2:mem:pulse;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+pulse:
+  ingest:
+    max-batch-size: 1000
+  query:
+    max-range-hours: 168
+    max-series: 500
+  dispatch:
+    base-url: http://dispatch-service.internal:8080
