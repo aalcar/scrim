@@ -158,8 +158,8 @@ function Brief({ scenario }: { scenario: Scenario }) {
       </div>
 
       <p className="mt-8 text-xs leading-relaxed text-muted">
-        {scenario.interviewer.name} is on the call with you and knows this system
-        well. She will answer what you ask and not much else.
+        {scenario.interviewer.name} is interviewing you. She knows this system
+        well and will answer what you ask — not much else.
       </p>
     </article>
   );

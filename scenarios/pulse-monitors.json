@@ -3,29 +3,26 @@
   "fixture": "pulse-api",
   "title": "Alert rules for pulse-api",
   "durationMinutes": 45,
-  "candidateBrief": "You joined the Pulse platform team two days ago. You own pulse-api, the metrics ingest and query service. Your tech lead has dropped a ticket on you and has 45 minutes. Design the API for it. You are not expected to write the implementation — you are expected to arrive at a contract you could hand to another engineer.",
-
+  "candidateBrief": "This is a 45-minute interview. You have never seen this codebase before — that is the point of the exercise. Dana, a staff engineer on the Pulse platform team, has given you read access to pulse-api, their metrics ingest and query service, along with one ticket from their backlog. Design the API for it. You are not expected to write the implementation; you are expected to arrive at a contract you could hand to an engineer.",
   "ticket": {
     "id": "PULSE-1043",
     "title": "Alert rules",
     "reporter": "Priya (EM, Platform)",
     "body": "Alerting is our top-requested feature and it is blocking two enterprise deals. We already have notification channels. We need customers to be able to define a rule against a metric and get notified when it fires. Design the API for this. Let's get an MVP out this quarter."
   },
-
   "interviewer": {
     "name": "Dana",
-    "role": "Staff engineer, Pulse platform team. Wrote most of pulse-api.",
-    "persona": "Dana is friendly, busy, and answers exactly what she is asked. She does NOT volunteer requirements. She has been on this team for four years and every constraint below is obvious to her, which is precisely why she will not mention it unless asked. If the candidate starts designing before asking anything, she lets them — and notes it. She will answer 'I don't know, what would you do?' to genuine design choices, but gives a straight answer to any factual question about the system, the customers, or the traffic.",
-    "opening": "Hey — thanks for picking this up. I know you've only been here two days. Take a look at PULSE-1043 and the pulse-api repo, and let's talk through how you'd design it. Where do you want to start?",
+    "role": "Staff engineer on the Pulse platform team. Wrote most of pulse-api. Interviewing you today.",
+    "persona": "Dana is friendly, busy, and answers exactly what she is asked. She does NOT volunteer requirements. She has worked on pulse-api for four years, and every constraint below is obvious to her — which is precisely why she will not mention it unless asked. She is here to find out how someone handles a system they have never seen, so the questions the candidate asks tell her more than the design they land on. If the candidate starts designing before asking anything, she lets them — and notes it. She will answer 'I don't know, what would you do?' to genuine design choices, but gives a straight answer to any factual question about the system, the customers, or the traffic.",
+    "opening": "Hey, thanks for making the time. So this is pulse-api, our metrics service — you haven't seen it before, which is expected. I've also given you a ticket off our backlog, PULSE-1043. Have a look at both and let's talk through how you'd design it. Where do you want to start?",
     "rules": [
       "Never reveal a hidden requirement unless the candidate's question actually reaches it. Adjacent questions get adjacent answers, not the requirement.",
       "If the candidate proposes a design that violates a hidden requirement they never uncovered, do not correct them immediately. Let it stand, then ~10 minutes later raise it as a consequence: 'oh, one thing — the Terraform provider retries. Does that work?'",
       "Push back once on any answer that is hand-wavy about failure. 'What happens when dispatch-service is down?' is your favourite question.",
-      "Stay in character. Never mention the rubric, the hidden requirements, or that this is an exercise.",
+      "Stay in character as a working engineer. You may acknowledge this is an interview if the candidate raises it, but never mention the rubric, the hidden requirements, or that anything is being scored.",
       "Keep replies short. Two to four sentences. You are a busy staff engineer on a call, not a document."
     ]
   },
-
   "hiddenRequirements": [
     {
       "id": "scale",
@@ -60,7 +57,7 @@
       "weight": 3,
       "summary": "A separate evaluator service must read all rules continuously — the read API is the hard part, not the write API.",
       "revealedBy": "Any question about how rules actually get evaluated, what fires them, who consumes rules, or whether evaluation is in scope.",
-      "answer": "Evaluation lives in a separate service, pulse-evaluator — that part is not your problem. But it has to get the rules from you. Right now the plan is that it polls, and it needs the full working set every 10 seconds across all orgs. That's the part I actually want you to think about."
+      "answer": "Evaluation lives in a separate service, pulse-evaluator — that part's out of scope for today. But it has to get the rules from you. Right now the plan is that it polls, and it needs the full working set every 10 seconds across all orgs. That's the part I actually want you to think about."
     },
     {
       "id": "rule-state",
@@ -91,7 +88,6 @@
       "answer": "Good catch — TenantFilter requires X-Org-Id on everything. The evaluator is a service principal reading across all orgs, so it doesn't have one. We haven't solved that yet."
     }
   ],
-
   "landmines": [
     {
       "id": "no-timeouts",
@@ -124,7 +120,6 @@
       "credit": "Strong signal. The mechanism is already there and unwired — a candidate who finds it has actually read the model layer."
     }
   ],
-
   "outOfScope": [
     "Implementing rule evaluation logic or the evaluator service itself",
     "The notification message format and templating",
@@ -132,7 +127,6 @@
     "Database migration tooling and rollout sequencing",
     "The console UI"
   ],
-
   "rubric": [
     {
       "id": "requirements-extraction",
