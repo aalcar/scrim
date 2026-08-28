@@ -1,13 +1,11 @@
 # scrim
 
-Practice for the interview format where you are dropped into an unfamiliar
-codebase and asked to design a feature, resolve a bug, or review a PR — while a
-staff engineer watches how you ask questions.
+Practice for interviews where you are dropped into an unfamiliar
+codebase and asked to design a feature, resolve a bug, or review a PR
 
 Right now it runs one scenario: design an alert-rules API for `pulse-api`, a
 Java Spring metrics service you have never seen before. The interviewer is an
-LLM playing a busy staff engineer who answers what you ask and volunteers
-nothing. When you end the session it scores the transcript against a rubric.
+LLM playing a busy engineer. When you end the session it scores the transcript against a rubric.
 
 ## Running it
 
@@ -25,12 +23,12 @@ codebase in `fixtures/`.
 
 | Key | Purpose |
 |---|---|
-| `ticket` | The deliberately underspecified ask the candidate sees. |
+| `ticket` | Underspecified feature to implement. |
 | `interviewer` | Persona, opening line, and the rules that keep them in character. |
-| `hiddenRequirements` | Real constraints withheld from the ticket. Each has a `revealedBy` condition — the interviewer only surfaces one when the candidate's question actually reaches it. |
+| `hiddenRequirements` | Real constraints withheld from the ticket. Each has a `revealedBy` condition where the interviewer only discusses it when the candidate specifically asks. |
 | `landmines` | Problems planted in the fixture. The interviewer never points them out first. |
 | `outOfScope` | Rabbit holes the interviewer steers away from. |
-| `rubric` | Weighted rows, each with what a 4 and a 1 look like. Scores are weighted server-side, not by the model. |
+| `rubric` | What does a weak and strong answer look like. |
 
 To add a scenario: drop a fixture in `fixtures/<name>/`, write
 `scenarios/<id>.json`, and visit `/?scenario=<id>`.
