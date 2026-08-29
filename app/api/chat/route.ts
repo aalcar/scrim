@@ -10,7 +10,7 @@ import { loadScenario, readFixture } from "@/lib/scrim";
 
 export const maxDuration = 60;
 
-const MODEL = process.env.SCRIM_INTERVIEWER_MODEL ?? "anthropic/claude-sonnet-5";
+const MODEL = process.env.SCRIM_INTERVIEWER_MODEL ?? "anthropic/claude-haiku-4.5";
 
 export async function POST(req: Request) {
   const {
@@ -29,11 +29,39 @@ export async function POST(req: Request) {
   const firstUserTurn = messages.findIndex((message) => message.role === "user");
   const conversation = firstUserTurn === -1 ? [] : messages.slice(firstUserTurn);
 
+  const modelMessages = await convertToModelMessages(conversation);
+
+  // The clock rides on the user turn, after the cache breakpoint. Putting it in
+  // the system prompt would change those bytes every turn and cache nothing.
+  const elapsed = Math.max(0, minutesElapsed ?? 0);
+  modelMessages.push({
+    role: "user",
+    content: `<session_clock>${elapsed} of ${scenario.durationMinutes} minutes elapsed, ${Math.max(0, scenario.durationMinutes - elapsed)} remaining.</session_clock>`,
+  });
+
   const result = streamText({
     model: MODEL,
-    system: interviewerSystemPrompt(scenario, files, minutesElapsed ?? 0),
-    messages: await convertToModelMessages(conversation),
+    instructions: {
+      role: "system",
+      content: interviewerSystemPrompt(scenario, files),
+      providerOptions: {
+        // The whole fixture sits above this breakpoint and never changes, so
+        // every turn after the first reads it at ~10% of input price. The 1h
+        // TTL is deliberate: candidates go quiet for minutes while reading code,
+        // which would expire the 5m default and force a re-write.
+        anthropic: { cacheControl: { type: "ephemeral", ttl: "1h" } },
+      },
+    },
+    messages: modelMessages,
   });
+
+  void (async () => {
+    try {
+      console.log("[chat] usage", JSON.stringify(await result.usage));
+    } catch {
+      // usage reporting is best-effort; never fail the response over it
+    }
+  })();
 
   return createUIMessageStreamResponse({
     stream: toUIMessageStream({ stream: result.stream }),
