@@ -76,7 +76,7 @@ test("reveals the Terraform caller when asked who calls the API", async () => {
   );
 });
 
-// The core mechanic: Dana states the fact, the candidate draws the conclusion.
+// The core mechanic: Lisa states the fact, the candidate draws the conclusion.
 // Haiku volunteered the conclusion about half the time until an explicit prompt
 // rule went in; measured afterwards it leaks roughly 1 run in 20. Prompting
 // cannot drive that to zero, so this samples and asserts on the rate — a

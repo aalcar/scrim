@@ -3,7 +3,7 @@
   "fixture": "pulse-api",
   "title": "Alert rules for pulse-api",
   "durationMinutes": 45,
-  "candidateBrief": "This is a 45-minute interview. You have never seen this codebase before — that is the point of the exercise. Dana, a staff engineer on the Pulse platform team, has given you read access to pulse-api, their metrics ingest and query service, along with one ticket from their backlog. Design the API for it. You are not expected to write the implementation; you are expected to arrive at a contract you could hand to an engineer.",
+  "candidateBrief": "This is a 45-minute interview. You have never seen this codebase before — that is the point of the exercise. Lisa, a staff engineer on the Pulse platform team, has given you read access to pulse-api, their metrics ingest and query service, along with one ticket from their backlog. Design the API for it. You are not expected to write the implementation; you are expected to arrive at a contract you could hand to an engineer.",
   "ticket": {
     "id": "PULSE-1043",
     "title": "Alert rules",
@@ -11,9 +11,9 @@
     "body": "Alerting is our top-requested feature and it is blocking two enterprise deals. We already have notification channels. We need customers to be able to define a rule against a metric and get notified when it fires. Design the API for this. Let's get an MVP out this quarter."
   },
   "interviewer": {
-    "name": "Dana",
+    "name": "Lisa",
     "role": "Staff engineer on the Pulse platform team. Wrote most of pulse-api. Interviewing you today.",
-    "persona": "Dana is friendly, busy, and answers exactly what she is asked. She does NOT volunteer requirements. She has worked on pulse-api for four years, and every constraint below is obvious to her — which is precisely why she will not mention it unless asked. She is here to find out how someone handles a system they have never seen, so the questions the candidate asks tell her more than the design they land on. If the candidate starts designing before asking anything, she lets them — and notes it. She will answer 'I don't know, what would you do?' to genuine design choices, but gives a straight answer to any factual question about the system, the customers, or the traffic.",
+    "persona": "Lisa is friendly, busy, and answers exactly what she is asked. She does NOT volunteer requirements. She has worked on pulse-api for four years, and every constraint below is obvious to her — which is precisely why she will not mention it unless asked. She is here to find out how someone handles a system they have never seen, so the questions the candidate asks tell her more than the design they land on. If the candidate starts designing before asking anything, she lets them — and notes it. She will answer 'I don't know, what would you do?' to genuine design choices, but gives a straight answer to any factual question about the system, the customers, or the traffic.",
     "opening": "Hey, thanks for making the time. So this is pulse-api, our metrics service — you haven't seen it before, which is expected. I've also given you a ticket off our backlog, PULSE-1043. Have a look at both and let's talk through how you'd design it. Where do you want to start?",
     "rules": [
       "Never reveal a hidden requirement unless the candidate's question actually reaches it. Adjacent questions get adjacent answers, not the requirement.",
@@ -93,7 +93,7 @@
       "id": "no-timeouts",
       "file": "src/main/java/com/pulse/api/config/DispatchClientConfig.java",
       "summary": "The RestClient for dispatch-service is built with no connect or read timeout, so a hung dispatch-service ties up pulse-api request threads indefinitely.",
-      "credit": "Full credit for spotting it unprompted; partial for spotting it after Dana raises dispatch reliability."
+      "credit": "Full credit for spotting it unprompted; partial for spotting it after Lisa raises dispatch reliability."
     },
     {
       "id": "network-in-transaction",
@@ -133,7 +133,7 @@
       "weight": 5,
       "criterion": "Uncovered the hidden requirements before committing to a design.",
       "strong": "Asked about callers, scale, and consumers in the first ten minutes. Uncovered the evaluator read path and idempotency without being led there.",
-      "weak": "Started drawing endpoints from the ticket text alone. Uncovered fewer than three hidden requirements, or only after Dana raised them."
+      "weak": "Started drawing endpoints from the ticket text alone. Uncovered fewer than three hidden requirements, or only after Lisa raised them."
     },
     {
       "id": "codebase-fluency",
