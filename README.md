@@ -4,7 +4,7 @@ Practice for interviews where you are dropped into an unfamiliar
 codebase and asked to design a feature, resolve a bug, or review a PR
 
 Right now it runs one scenario: design an alert-rules API for `pulse-api`, a
-Java Spring metrics service you have never seen before. The interviewer is an
+Java Spring metrics service. The interviewer is an
 LLM playing a busy engineer. When you end the session it scores the transcript against a rubric.
 
 ## Running it
@@ -30,8 +30,10 @@ codebase in `fixtures/`.
 | `outOfScope` | Rabbit holes the interviewer steers away from. |
 | `rubric` | What does a weak and strong answer look like. |
 
-To add a scenario: drop a fixture in `fixtures/<name>/`, write
-`scenarios/<id>.json`, and visit `/?scenario=<id>`.
+To add a scenario: 
+- drop a fixture in `fixtures/<name>/`
+- write `scenarios/<id>.json`
+- visit `/?scenario=<id>`
 
 ## Layout
 
