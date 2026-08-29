@@ -2,6 +2,7 @@ import { generateText, Output, type UIMessage } from "ai";
 import { z } from "zod";
 import { graderSystemPrompt } from "@/lib/prompt";
 import { loadScenario } from "@/lib/scrim";
+import { scoreRubric } from "@/lib/score";
 
 export const maxDuration = 120;
 
@@ -68,12 +69,10 @@ export async function POST(req: Request) {
     prompt: `Transcript:\n\n${transcript}`,
   });
 
-  const weightById = new Map(scenario.rubric.map((row) => [row.id, row.weight]));
-  const earned = output.rubric.reduce(
-    (sum, row) => sum + row.score * (weightById.get(row.id) ?? 0),
-    0,
-  );
-  const possible = scenario.rubric.reduce((sum, row) => sum + row.weight * 4, 0);
+  const scoring = scoreRubric(scenario.rubric, output.rubric);
+  if (scoring.missing.length || scoring.unknown.length) {
+    console.warn("[grade] rubric mismatch", scoring.missing, scoring.unknown);
+  }
 
-  return Response.json({ ...output, earned, possible });
+  return Response.json({ ...output, ...scoring });
 }

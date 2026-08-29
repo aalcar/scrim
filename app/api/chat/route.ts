@@ -55,15 +55,23 @@ export async function POST(req: Request) {
     messages: modelMessages,
   });
 
-  void (async () => {
-    try {
-      console.log("[chat] usage", JSON.stringify(await result.usage));
-    } catch {
-      // usage reporting is best-effort; never fail the response over it
-    }
-  })();
-
   return createUIMessageStreamResponse({
-    stream: toUIMessageStream({ stream: result.stream }),
+    stream: toUIMessageStream({
+      stream: result.stream,
+      // Surfaced so the cache can be asserted on rather than trusted. A run
+      // where cacheReadTokens stays zero costs roughly ten times as much.
+      messageMetadata: ({ part }) =>
+        part.type === "finish"
+          ? {
+              model: MODEL,
+              usage: {
+                input: part.totalUsage.inputTokens,
+                output: part.totalUsage.outputTokens,
+                cacheRead: part.totalUsage.inputTokenDetails?.cacheReadTokens,
+                cacheWrite: part.totalUsage.inputTokenDetails?.cacheWriteTokens,
+              },
+            }
+          : undefined,
+    }),
   });
 }

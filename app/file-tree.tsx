@@ -1,71 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { buildTree, directoryPaths, type TreeNode } from "@/lib/tree";
 
 export const BRIEF = "__brief__";
-
-type TreeNode =
-  | { kind: "file"; name: string; path: string }
-  | { kind: "dir"; name: string; path: string; children: TreeNode[] };
-
-type Draft = { dirs: Map<string, Draft>; files: string[] };
-
-function draft(paths: string[]): Draft {
-  const root: Draft = { dirs: new Map(), files: [] };
-  for (const path of paths) {
-    const segments = path.split("/");
-    const fileName = segments.pop();
-    if (!fileName) continue;
-    let node = root;
-    for (const segment of segments) {
-      let next = node.dirs.get(segment);
-      if (!next) {
-        next = { dirs: new Map(), files: [] };
-        node.dirs.set(segment, next);
-      }
-      node = next;
-    }
-    node.files.push(fileName);
-  }
-  return root;
-}
-
-const byName = (a: { name: string }, b: { name: string }) =>
-  a.name.localeCompare(b.name);
-
-function toNodes(node: Draft, prefix: string): TreeNode[] {
-  const dirs: TreeNode[] = [...node.dirs.entries()].map(([name, child]) => {
-    let label = name;
-    let path = prefix ? `${prefix}/${name}` : name;
-    let current = child;
-
-    // IntelliJ-style compaction: a directory that only leads to one other
-    // directory is folded into a single row, so src/main/java/com/pulse/api
-    // does not cost five levels of indentation.
-    while (current.files.length === 0 && current.dirs.size === 1) {
-      const [childName, grandchild] = [...current.dirs.entries()][0];
-      label += `/${childName}`;
-      path += `/${childName}`;
-      current = grandchild;
-    }
-
-    return { kind: "dir", name: label, path, children: toNodes(current, path) };
-  });
-
-  const files: TreeNode[] = node.files.map((name) => ({
-    kind: "file",
-    name,
-    path: prefix ? `${prefix}/${name}` : name,
-  }));
-
-  return [...dirs.sort(byName), ...files.sort(byName)];
-}
-
-function directoryPaths(nodes: TreeNode[]): string[] {
-  return nodes.flatMap((node) =>
-    node.kind === "dir" ? [node.path, ...directoryPaths(node.children)] : [],
-  );
-}
 
 export default function FileTree({
   paths,
@@ -76,7 +14,7 @@ export default function FileTree({
   selected: string;
   onSelect: (path: string) => void;
 }) {
-  const nodes = useMemo(() => toNodes(draft(paths), ""), [paths]);
+  const nodes = useMemo(() => buildTree(paths), [paths]);
   const allDirs = useMemo(() => directoryPaths(nodes), [nodes]);
 
   const [collapsed, setCollapsed] = useState(false);
